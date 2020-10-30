@@ -23,7 +23,7 @@ saveRDS(questions, here("data", "processed", "questions.Rds"))
 
 cells <- xlsx_cells(file_path, sheet = "Questionnaire")
 
-tidy <-
+questionnaire <-
   cells %>%
   filter(!is_blank) %>%
   select(address, row, col, data_type, date, character, numeric) %>%
@@ -45,13 +45,83 @@ tidy <-
   # Interpret as an ordinary table
   behead("up", "question_id") %>%
   behead("left", "pupil_id") %>%
-  behead("left", "pupil_impact_id") %>%
+  behead("left", "pupil_impacted_id") %>%
   behead("left", "questionnaire_definition_id") %>%
   behead("left", "score") %>%  # "Score = Average response score given for that questionnaire", i.e. we don't need it
   behead("left", "Created") %>%
   behead("left", "created_at") %>%
-  behead("left", "Count") %>%
+  behead("left", "Count") %>% # 'The "count" column is telling us which attempt for the student that is (chronologically). So the first attempt will be 1, the second 2 and so on', i.e. we don't need it.
   mutate(created_at = if_else(is.na(created_at), Created, created_at)) %>%
-  select(address, row, col, pupil_id, pupil_impact_id, questionnaire_definition_id, created_at, character, numeric)
+  select(pupil_id,
+         pupil_impacted_id,
+         questionnaire_definition_id,
+         created_at,
+         question_id,
+         character,
+         numeric) %>%
+  left_join(questions, by = "question_id")
 
-saveRDS(tidy, here("data", "processed", "questionnaire.Rds"))
+# Some pupils have submitted multiple reponses on the same date (usually when the
+# time hasn't been recorded).  We choose to drop all the responses of these
+# pupils.
+pupil_ids_with_multiple_responses <-
+  questionnaire %>%
+  count(pupil_id, created_at, question_id) %>%
+  filter(n > 1) %>%
+  distinct(pupil_id)
+
+questionnaire <-
+  anti_join(questionnaire,
+            pupil_ids_with_multiple_responses,
+            by = "pupil_id")
+
+saveRDS(questionnaire, here("data", "processed", "questionnaire.Rds"))
+
+# Answers by each pupil to each the survey with ID 184. ------------------------
+
+# These answers are missing from the Questionnaire sheet, though the set of
+# pupils is almost the same (we think the difference is 10).
+
+# Unfortunately, this sheet doesn't have any datetimes, only dates.
+
+sheet_184 <-
+  read_excel(file_path, sheet = "184") %>%
+  rename(created_at = date) %>%
+  select(-measurement_date) %>%
+  pivot_longer(-c(pupil_id, pupil_impacted_id, created_at),
+               names_to = "question",
+               values_to = "numeric") %>%
+  mutate(questionnaire_definition_id = 184, character = NA_character_) %>%
+  left_join(questions, by = "question")
+
+# Some pupils have submitted multiple reponses on the same date (usually when the
+# time hasn't been recorded).  We choose to drop all the responses of these
+# pupils.
+pupil_ids_with_multiple_responses_184 <-
+  sheet_184 %>%
+  count(pupil_id, created_at, question_id) %>%
+  filter(n > 1) %>%
+  distinct(pupil_id)
+
+sheet_184 <-
+  anti_join(sheet_184,
+            pupil_ids_with_multiple_responses_184,
+            by = "pupil_id")
+
+saveRDS(sheet_184, here("data", "processed", "questionnaire-184-responses.Rds"))
+
+all_responses <-
+  bind_rows(questionnaire, responses_184) %>%
+  arrange(questionnaire_definition_id, question_id, pupil_id, created_at) %>%
+  select(questionnaire_definition_id,
+         question_id,
+         pupil_id,
+         pupil_impacted_id,
+         created_at,
+         question_category,
+         question_id,
+         question,
+         numeric,
+         character)
+
+saveRDS(all_responses, here("data", "processed", "all-responses.Rds"))
