@@ -110,6 +110,38 @@ sheet_184 <-
 
 saveRDS(sheet_184, here("data", "processed", "questionnaire-184-responses.Rds"))
 
+# Function to extract responses like "Tasks created by my school (for example,
+# worksheets or suggested learning activities), Videos recorded by my school,
+# Other online learning tools (for example, Hegarty Maths, Numbots, Seneca
+# Learning, Century TECH)" into separate strings.
+separate_multiple_choice_answers <- function(x) {
+  out <-
+    str_replace_all(
+      x,
+      c(
+        "\\), " = ");",
+        "above, " = "above;",
+        "advance, " = "advance;",
+        "back, " = "back;",
+        "coronavirus, " = "coronavirus;",
+        "have, " = "have;",
+        "learning, " = "learning;",
+        "like, " = "like;",
+        "possible, " = "possible;",
+        "resources, " = "resources;",
+        "school, " = "school;",
+        "while, " = "while;",
+        "work, " = "work;"
+      )
+    )
+  map(out, ~ str_split(.x, ";")[[1]])
+}
+# separate_multiple_choice_answers("Tasks created by my school (for example, worksheets or suggested learning activities), Videos recorded by my school, Other online learning tools (for example, Hegarty Maths, Numbots, Seneca Learning, Century TECH)")
+# [[1]]
+# [1] "Tasks created by my school (for example, worksheets or suggested learning activities)"
+# [2] "Videos recorded by my school"
+# [3] "Other online learning tools (for example, Hegarty Maths, Numbots, Seneca Learning, Century TECH)"
+
 all_responses <-
   bind_rows(questionnaire, sheet_184) %>%
   arrange(questionnaire_definition_id, question_id, pupil_id, created_at) %>%
@@ -119,9 +151,22 @@ all_responses <-
          pupil_impacted_id,
          created_at,
          question_category,
-         question_id,
          question,
          numeric,
-         character)
+         character) %>%
+  # Replace empty character responses with NA
+  mutate(character = if_else(character == "", NA_character_, character)) %>%
+  # Drop rows with no answers
+  filter(!(is.na(numeric) & (is.na(character)))) %>%
+  # Convert t/f values to TRUE/FALSE
+  mutate(logical = case_when(character == "t" ~ TRUE,
+                             character == "f" ~ FALSE,
+                             TRUE ~ NA),
+         character = if_else(is.na(logical), character, NA_character_)) %>%
+  # Extract multi-value character responses
+  mutate(character =
+    if_else(question_id %in% c("212_2", "212_3", "212_4"),
+            separate_multiple_choice_answers(character),
+            as.list(character)))
 
 saveRDS(all_responses, here("data", "processed", "all-responses.Rds"))
