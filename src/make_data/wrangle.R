@@ -111,7 +111,7 @@ sheet_184 <-
 saveRDS(sheet_184, here("data", "processed", "questionnaire-184-responses.Rds"))
 
 all_responses <-
-  bind_rows(questionnaire, responses_184) %>%
+  bind_rows(questionnaire, sheet_184) %>%
   arrange(questionnaire_definition_id, question_id, pupil_id, created_at) %>%
   select(questionnaire_definition_id,
          question_id,
