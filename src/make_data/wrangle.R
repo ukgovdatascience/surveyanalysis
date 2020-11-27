@@ -170,3 +170,56 @@ all_responses <-
             as.list(character)))
 
 saveRDS(all_responses, here("data", "processed", "all-responses.Rds"))
+
+# Update 2020-11-27 it turns out that each pupil only has a unique set of
+# demographics, which have been joined to each of their questionnaire responses.
+# So we only need a single row of demographics, and no date, and then can join
+# (nicely) to their questionnaire responses by pupil_id alone.
+
+demographics <-
+  read_excel("./data/raw/Skills Measure Main November (Anon) - scores and pupil demographics only.xlsx",
+             sheet = "Questionnaires",
+             range = "A2:R374774",
+  col_types = c("text",    # pupil_id
+                "text",    # pupil_impacted_id
+                "text",    # questionnaire_id
+                "skip",    # score
+                "text",    # created_at, mixture of date formats
+                "skip",    # count (nth response from pupil)
+                "text",    # school_id
+                "logical", # eal
+                "text",    # gender
+                "numeric", # key_stage
+                "logical", # pupil_premium
+                "logical", # send_marker
+                "numeric", # year_group
+                "logical", # dEAL
+                "logical", # dFEMALE
+                "logical", # dLAC
+                "logical", # dPPP
+                "logical"  # dSEND
+                ))
+
+# Check a pupil that responded many times
+demographics %>%
+  count(pupil_id, sort = TRUE)
+
+demographics %>%
+  filter(pupil_id == "29463") %>%
+  print(n = Inf)
+
+# Have any pupils updated their key stage or year group with the new academic
+# year. No.
+demographics %>%
+  distinct(pupil_id, key_stage) %>%
+  count(pupil_id, sort = TRUE)
+
+demographics %>%
+  distinct(pupil_id, year_group) %>%
+  count(pupil_id, sort = TRUE)
+
+# Have any pupils updated anything at all?  No.  So we can just take a single
+# row for each pupil.  Phewee.
+demographics %>%
+  distinct(across(-c(questionnaire_definition_id, created_at))) %>%
+  count(pupil_id, sort = TRUE)
