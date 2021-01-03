@@ -2,6 +2,7 @@ library(readr)
 library(lubridate)
 library(dplyr)
 library(tidyr)
+library(ggplot2)
 
 df <- read_csv(file = "data/processed/questionnaires_linked.csv")
 
@@ -45,4 +46,23 @@ df_wellbeing <- df %>%
     cols = -c("pupil_id", "measurement_date"),
     names_to = "question",
     values_to = "response"
-  )
+  ) %>%
+  # extract month for simplication
+  mutate(measurement_month = as.factor(month(measurement_date)))
+
+
+# suggestion i:
+# I guess my go-to would be % of respondents rating 'highly likely' per data point, with time as x-axis?
+# So it could be a stacked area / bar chart / line chart if you decide to include the breaks as well
+
+
+# suggestion ii:
+# geom point + jitter them + colour them by ordinal scale (1 - 7 or whatever) + use borders
+# if you need to highlight the micro-cohorts + x-axis is time
+ggplot(data = df_wellbeing, mapping = aes(
+  x = measurement_month,
+  y = as.factor(pupil_id),
+  colour = as.factor(response)
+)) +
+  geom_point() +
+  facet_grid(. ~ question)
