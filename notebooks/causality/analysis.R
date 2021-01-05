@@ -24,8 +24,10 @@ rm(df_names, df_files, i)
 # are most predictive of the wellbeing or learning scores
 
 # what are our wellbeing and learning variables?
-filter_dv <- list_dfs[["df_questions"]] %>%
-  filter(str_detect(string = measure, pattern = "(?i)wellbeing|learn")) %>%
+wellbeing_learn <- list_dfs[["df_questions"]] %>%
+  filter(str_detect(string = measure, pattern = "(?i)wellbeing|learn"))
+wellbeing_learn %>% distinct(measure)
+filter_dv <- wellbeing_learn %>%
   distinct(questionnaire) %>%
   pull()
 
@@ -33,18 +35,27 @@ filter_dv <- list_dfs[["df_questions"]] %>%
 # to make modelling easier
 # do this by using mode since are dealing with categorical variables
 
+# 187 and 188 are logical, TRUE/FALSE
+
 # likert scale so 5
 n_lvls <- 5
 factor_lvls <- c(seq_len(length.out = n_lvls), NA)
 
 df_dv <- list_dfs[["df_responses"]] %>%
   select(contains(match = c("pupil_id", "measurement_date", filter_dv))) %>%
-  # convert to factors
-  mutate(across(.cols = contains(match = filter_dv), .fns = ~ factor(x = .x, levels = factor_lvls, ordered = TRUE))) %>%
+  # convert to ordered factors
+  mutate(across(.cols = starts_with(match = "185"), .fns = ~ factor(x = .x, levels = factor_lvls, ordered = TRUE))) %>%
   rowwise() %>%
   # compute mode for each record
   mutate(
     mode_wellbeing = get_mode(x = c_across(cols = starts_with(match = "185"))),
-    mode_contextlearningaccess = get_mode(x = c_across(cols = starts_with(match = "187"))),
     mode_remotelearn = get_mode(x = c_across(cols = starts_with(match = "188")))
-  )
+  ) %>%
+  # ignore ImpactEd Covid-learning index - 207
+  select(pupil_id, measurement_date, starts_with(match = "187"), starts_with(match = "mode"))
+
+# how many dvs do we have? wellbeing is most completed;
+# this might be because context learning access and remote learn are mixed data types (not just likert scale)
+# so harder to get overall measure for it
+nrow(filter(.data = df_dv, !is.na(x = mode_wellbeing)))
+nrow(filter(.data = df_dv, !is.na(x = mode_remotelearn)))

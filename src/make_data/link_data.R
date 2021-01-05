@@ -58,14 +58,21 @@ j <- 1
 
 for (i in files$drive_resource) {
   link <- i$webContentLink
+  # extract question numbers
+  file_name <- i$name
+  file_name <- unlist(x = str_match_all(string = file_name, pattern = "[0-9]+"))
   df <- read_responses(file = link)
+  df <- mutate(.data = df, questionnaire_number = as.character(x = file_name))
   # store in list
   list_df[[j]] <- df
   j <- j + 1
 }
 
 responses <- map_dfr(.x = list_df, .f = rbind) %>%
-  mutate(measurement_date = parse_date(x = measurement_date, format = "%d/%m/%Y"))
+  mutate(
+    measurement_date = parse_date(x = measurement_date, format = "%d/%m/%Y"),
+    questionnaire_number = as.integer(x = questionnaire_number)
+  )
 
 # clear environment
 unlink(tf)
@@ -95,14 +102,16 @@ responses %>%
 
 # partition these duplicate responses with a row number; allocation of this is random
 # this seems the best we can do
-responses <- responses %>%
+responses_dedupe <- responses %>%
+  # drop rows with NAs
+  drop_na(questionnaire) %>%
   select(pupil_id:measurement_date, qq, response) %>%
-  group_by(pupil_id, pupil_impacted_id, measurement_date, qq) %>%
+  group_by(pupil_id, measurement_date, qq) %>%
   mutate(rank = row_number()) %>%
   arrange(pupil_id, pupil_impacted_id, measurement_date, qq)
 
 # isolate unique records
-responses_dedupe <- filter(.data = responses, rank == 1)
+responses_dedupe <- filter(.data = responses_dedupe, rank == 1)
 
 # pivot wider for ImpactEd's purposes
 df_output <- responses_dedupe %>%
