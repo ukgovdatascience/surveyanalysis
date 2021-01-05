@@ -121,7 +121,7 @@ df_output <- responses_dedupe %>%
     values_from = "response"
   ) %>%
   arrange(pupil_id, measurement_date)
-write_csv(x = df_output, file = "data/processed/questionnaires_linked.csv")
+write_csv(x = df_output, file = "data/interim/questionnaires_linked.csv")
 
 
 
@@ -132,5 +132,5 @@ contextual_responses <- sheet_questionnaires %>%
   distinct(across(.cols = all_of(col_unique)))
 # check if have unique records - yes
 nrow(x = contextual_responses) == nrow(x = distinct(.data = contextual_responses, pupil_id))
-write_csv(x = sheet_questionnaires, file = "data/processed/context.csv")
-write_csv(x = sheet_questions, file = "data/processed/questions.csv")
+write_csv(x = sheet_questionnaires, file = "data/interim/context.csv")
+write_csv(x = sheet_questions, file = "data/interim/questions.csv")

@@ -6,6 +6,7 @@ source("src/utils/get_mode.R")
 
 # ensure you run `direnv allow` in terminal
 readRenviron(path = ".env")
+dir_interim <- Sys.getenv(x = "DIR_DATA_INTERIM")
 dir_processed <- Sys.getenv(x = "DIR_DATA_PROCESSED")
 df_names <- c("df_responses", "df_context", "df_questions")
 df_files <- c("questionnaires_linked.csv", "context.csv", "questions.csv")
@@ -15,7 +16,7 @@ df_files <- c("questionnaires_linked.csv", "context.csv", "questions.csv")
 # load data into named list
 list_dfs <- list()
 for (i in seq_len(length.out = length(x = df_files))) {
-  list_dfs[[i]] <- read_csv(file = paste0(dir_processed, "/", df_files[i]))
+  list_dfs[[i]] <- read_csv(file = paste0(dir_interim, "/", df_files[i]))
 }
 names(list_dfs) <- df_names
 
@@ -68,6 +69,7 @@ nrow(filter(.data = df_dv, !is.na(x = mode_remotelearn)))
 nrow(x = distinct(.data = df_dv, pupil_id, measurement_date)) == nrow(x = df_dv)
 
 
+rm(wellbeing_learn, factor_lvls, filter_dv, n_lvls)
 
 # Include independent variables -------------------------------------------
 # contextual iv
@@ -82,3 +84,7 @@ df_iv <- list_dfs[["df_context"]] %>%
 # get summary stats
 summary(object = select(.data = df_dv, starts_with(match = "mode")))
 summary(object = select(.data = df_iv, starts_with(match = "d")))
+
+# export
+write_csv(x = df_iv, file = paste0(dir_processed, "/df_iv.csv"))
+write_csv(x = df_dv, file = paste0(dir_processed, "/df_dv.csv"))
