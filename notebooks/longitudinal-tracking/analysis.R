@@ -3,6 +3,7 @@ library(lubridate)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(scales)
 
 df <- read_csv(file = "data/processed/questionnaires_linked.csv")
 
@@ -47,22 +48,50 @@ df_wellbeing <- df %>%
     names_to = "question",
     values_to = "response"
   ) %>%
-  # extract month for simplication
-  mutate(measurement_month = as.factor(month(measurement_date)))
+  # extract month for simplification
+  mutate(measurement_month = factor(x = month(measurement_date)),
+         response = factor(x = response,
+                           levels = c(NA, seq(from = 1, to = 5, by = 1)),
+                           ordered = TRUE))
 
 
 # suggestion i:
 # I guess my go-to would be % of respondents rating 'highly likely' per data point, with time as x-axis?
 # So it could be a stacked area / bar chart / line chart if you decide to include the breaks as well
+df_stack <- df_wellbeing %>% 
+  group_by(measurement_month, response) %>% 
+  tally() %>% 
+  rename('counts' = 'n') %>% 
+  mutate(label = paste0(round(x = 100 * counts / sum(counts), digits = 2), '%'))
+
+ggplot(data = df_stack, mapping = aes(x = measurement_month,
+                                      y = counts,
+                                      fill = response)) +
+  geom_bar(stat = 'identity') +
+  geom_text(mapping = aes(label = label),
+            position = position_stack(vjust = 0.5))
 
 
 # suggestion ii:
 # geom point + jitter them + colour them by ordinal scale (1 - 7 or whatever) + use borders
 # if you need to highlight the micro-cohorts + x-axis is time
-ggplot(data = df_wellbeing, mapping = aes(
-  x = measurement_month,
-  y = as.factor(pupil_id),
-  colour = as.factor(response)
-)) +
+ggplot(data = df_wellbeing, 
+       mapping = aes(x = measurement_month,
+                     y = as.factor(pupil_id),
+                     colour = response)) +
   geom_point() +
   facet_grid(. ~ question)
+
+# suggestion iii:
+# graph visualisation where nodes are responses and edges are % of responses following this path
+
+# no. of surveys they complete
+n <- 4
+
+# no. of levels (likert)
+lvls <- list(1:5)
+
+l <- rep(x = lvls, n)
+
+# get no. of unique permutations
+combos <- expand.grid(l)
