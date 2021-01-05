@@ -10,6 +10,8 @@ dir_processed <- Sys.getenv(x = "DIR_DATA_PROCESSED")
 df_names <- c("df_responses", "df_context", "df_questions")
 df_files <- c("questionnaires_linked.csv", "context.csv", "questions.csv")
 
+
+# Load data ---------------------------------------------------------------
 # load data into named list
 list_dfs <- list()
 for (i in seq_len(length.out = length(x = df_files))) {
@@ -23,6 +25,8 @@ rm(df_names, df_files, i)
 # (contextual survey responses or demographics)
 # are most predictive of the wellbeing or learning scores
 
+
+# Compute dependent variable ----------------------------------------------
 # what are our wellbeing and learning variables?
 wellbeing_learn <- list_dfs[["df_questions"]] %>%
   filter(str_detect(string = measure, pattern = "(?i)wellbeing|learn"))
@@ -59,3 +63,22 @@ df_dv <- list_dfs[["df_responses"]] %>%
 # so harder to get overall measure for it
 nrow(filter(.data = df_dv, !is.na(x = mode_wellbeing)))
 nrow(filter(.data = df_dv, !is.na(x = mode_remotelearn)))
+
+# each person and date is unique
+nrow(x = distinct(.data = df_dv, pupil_id, measurement_date)) == nrow(x = df_dv)
+
+
+
+# Include independent variables -------------------------------------------
+# contextual iv
+df_iv <- list_dfs[["df_context"]] %>%
+  select(pupil_id, school_id, EAL, key_stage:send_marker, d_female = dFemale) %>%
+  # change datatype for modelling
+  mutate(across(.cols = c(pupil_id, school_id), .fns = as.integer),
+    d_key_stage = as.factor(key_stage),
+    across(.cols = c(EAL, pupil_premium_eligible, send_marker), .fns = as.logical, .names = "d_{.col}")
+  )
+
+# get summary stats
+summary(object = select(.data = df_dv, starts_with(match = "mode")))
+summary(object = select(.data = df_iv, starts_with(match = "d")))
