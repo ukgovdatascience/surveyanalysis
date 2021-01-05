@@ -146,6 +146,8 @@ JwtTokenDetector
 KeywordDetector
 LazyData
 LinkingTo
+linter
+linters
 lintr
 macOS
 MailchimpDetector

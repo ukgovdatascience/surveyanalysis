@@ -7,12 +7,14 @@ library(tidyr)
 
 source("src/utils/read_responses.R")
 
+drive_path <- "https://drive.google.com/file/d/1PS9xQIP_O048rGb-uvwPonyrV_3CCYc4/view?usp=sharing"
 
+# Data Load ---------------------------------------------------------------
 # authorise access to gdrive
 drive_auth()
 
 # get list of all files
-file_main <- drive_get(path = as_id(x = "https://drive.google.com/file/d/1PS9xQIP_O048rGb-uvwPonyrV_3CCYc4/view?usp=sharing"))
+file_main <- drive_get(path = as_id(x = drive_path))
 files <- drive_ls(
   path = as_id(x = "https://drive.google.com/drive/u/0/folders/1sfavbXr3UAqfd_zWAuDChvC7Hnb69gi5"),
   type = "csv"
@@ -47,6 +49,9 @@ sheet_questions <- sheet_questions %>%
   fill(measure, .direction = "down")
 sheet_questionnaires <- select(.data = sheet_questionnaires, pupil_id:dSEND)
 
+
+
+# Question Responses ------------------------------------------------------
 # import each csv from gdrive
 list_df <- list()
 j <- 1
@@ -82,7 +87,11 @@ responses %>%
   filter(count > 1)
 # have duplicates, here's an example
 responses %>%
-  filter(pupil_id == "100165", measurement_date == "2020-09-09", qq == "207_10 - I have felt like I have missed important school work")
+  filter(
+    pupil_id == "100165",
+    measurement_date == "2020-09-09",
+    qq == "207_10 - I have felt like I have missed important school work"
+  )
 
 # partition these duplicate responses with a row number; allocation of this is random
 # this seems the best we can do
@@ -104,3 +113,15 @@ df_output <- responses_dedupe %>%
   ) %>%
   arrange(pupil_id, measurement_date)
 write_csv(x = df_output, file = "data/processed/questionnaires_linked.csv")
+
+
+
+# Questionnaires ----------------------------------------------------------
+# drop duplicates
+col_unique <- colnames(x = select(.data = sheet_questionnaires, pupil_id, school_id:dSEND))
+contextual_responses <- sheet_questionnaires %>%
+  distinct(across(.cols = all_of(col_unique)))
+# check if have unique records - yes
+nrow(x = contextual_responses) == nrow(x = distinct(.data = contextual_responses, pupil_id))
+write_csv(x = sheet_questionnaires, file = "data/processed/context.csv")
+write_csv(x = sheet_questions, file = "data/processed/questions.csv")
