@@ -50,7 +50,7 @@ summary(object = select(.data = df, -c(pupil_id, school_id, measurement_date)))
 #                 however, it's mostly used in case of continuous, quantitative variable.
 #                 we have categorical and boolean variables.
 # - knn: impute missing values using neighbourhood points.
-# - predict: input missing values by using a multiclass predictor. Like interpolation 
+# - predict: input missing values by using a multiclass predictor. Like interpolation
 #            but won't add much extra info to mode?
 
 
@@ -82,25 +82,25 @@ df_val <- validation_split(data = df_train, prop = 0.8, strata = mode_wellbeing)
 # Model: Penalised Logistic Regression ----------------------------------
 # set mixture to 1 means glmnet model removes irrelevant predictors
 # and choose simpler model
-model_lr <- multinom_reg(penalty = tune(), mixture = 1) %>% 
-  set_engine(engine = 'glmnet')
+model_lr <- multinom_reg(penalty = tune(), mixture = 1) %>%
+  set_engine(engine = "glmnet")
 # create recipe for preprocessing data to prep for model
 # and convert all categorical variables to dummy variables
-recipe_lr <- recipe(data = df_train, mode_wellbeing ~ .) %>% 
-  step_date(measurement_date) %>% 
-  step_rm(measurement_date) %>% 
-  step_dummy(all_nominal(), -all_outcomes()) %>% 
+recipe_lr <- recipe(data = df_train, mode_wellbeing ~ .) %>%
+  step_date(measurement_date) %>%
+  step_rm(measurement_date) %>%
+  step_dummy(all_nominal(), -all_outcomes()) %>%
   # remove iv that contain a single unique value since predictors should be centred and scaled
   step_zv(all_predictors())
 
 
 # bundle model and recipe into single workflow
-workflow_lr <- workflow() %>% 
-  add_model(model_lr) %>% 
+workflow_lr <- workflow() %>%
+  add_model(model_lr) %>%
   add_recipe(recipe_lr)
 
 # create grid of penalty values for tuning
-# as only have one hyperparam to tune here, 
+# as only have one hyperparam to tune here,
 # can set grid manually using a one-column tibble with 30 candidate values
 reg_grid_lr <- tibble(penalty = 10^seq(-4, -1, length.out = 30))
 # lowest penalty values
@@ -112,16 +112,17 @@ reg_grid_lr %>% top_n(5)
 # using tune::tune_grid() to train these 30 penalised log-reg models
 # and save validation set prediction (via control_grid()) so diagnostic info
 # is available after model fit
-res_lr <- workflow_lr %>% 
+res_lr <- workflow_lr %>%
   tune_grid(df_val,
-            grid = reg_grid_lr,
-            control = control_grid(save_pred = TRUE),
-            metrics = metric_set(roc_auc))
+    grid = reg_grid_lr,
+    control = control_grid(save_pred = TRUE),
+    metrics = metric_set(roc_auc)
+  )
 
-# visualise validation set metrics by plotting area under ROC 
+# visualise validation set metrics by plotting area under ROC
 # against range of penalty values
-plot_lr <- res_lr %>% 
-  collect_metrics() %>% 
+plot_lr <- res_lr %>%
+  collect_metrics() %>%
   ggplot(mapping = aes(x = penalty, y = mean)) +
   geom_point() +
   geom_line() +
@@ -137,29 +138,31 @@ plot_lr
 
 # model performance plateaus at smaller penalty values,
 # so going by `roc_auc` metric alone could lead to multiple options for the 'best' hyperparam value
-res_lr %>% 
-  show_best(metric = 'roc_auc', n = 15) %>% 
+res_lr %>%
+  show_best(metric = "roc_auc", n = 15) %>%
   arrange(penalty)
 # as every candidate model in above tibble likely includes more predictor variables
 # as the model in row below in, we take the lowest row to ensure we get the best model
 # with fewest predictors
-select_best(x = res_lr, metric = 'roc_auc')
-plot_lr + 
-  geom_vline(xintercept = select_best(x = res_lr, metric = 'roc_auc')$penalty,
-             colour = 'red')
+select_best(x = res_lr, metric = "roc_auc")
+plot_lr +
+  geom_vline(
+    xintercept = select_best(x = res_lr, metric = "roc_auc")$penalty,
+    colour = "red"
+  )
 # however, may want to choose a higher penalty with a lower ROC area value
 # as generally want a more parsimonious model,
 # thus may prefer row 12 which gives the same mean but has less predictors,
 # so select and visualise it
-best_lr <- res_lr %>% 
-  collect_metrics() %>% 
-  arrange(penalty) %>% 
+best_lr <- res_lr %>%
+  collect_metrics() %>%
+  arrange(penalty) %>%
   slice(12)
 best_lr
 # plot
-auc_lr <- res_lr %>% 
-  collect_predictions(parameters = best_lr) %>% 
-  roc_curve(mode_wellbeing, .pred_1:.pred_5) %>% 
+auc_lr <- res_lr %>%
+  collect_predictions(parameters = best_lr) %>%
+  roc_curve(mode_wellbeing, .pred_1:.pred_5) %>%
   mutate(model = "Multinomial Regression")
 autoplot(object = auc_lr)
 # we can see that our multinomial regression model does okay,
@@ -167,8 +170,84 @@ autoplot(object = auc_lr)
 # but we could do better by having a larger area under the curve/be closer to top-left.
 # could be because we had class imbalances as indicated by larger areas for `5`.
 
-
+rm(index, key_stage_lvls, n_lvls, wellbeing_lvls)
 
 # Model: Tree-based ensemble ----------------------------------------------
+# tree-based models require very little preprocessing
+# and can effectively handle many types of predictors
+# (sparse, skewed, continuous, categorical)
+n_cores <- parallel::detectCores() - 1
+
+# if use other resampling method, let tune do parallel processing for you
+# so set num.threads = tune() - one things
+# using tune() as placeholder for `mtry` and `min_n` argument values,
+# as these are our two hyperparam that we will tune
+model_rf <- rand_forest(
+  mtry = tune(),
+  min_n = tune(),
+  trees = 1000
+) %>%
+  set_engine(engine = "ranger", num.threads = n_cores) %>%
+  set_mode(mode = "classification")
+
+# create recipe and workflow
+# unlike ppenalised logistic regression models,
+# random forest models don't require dummy or normalised IV,
+# but want to do feature-engineering on measurement_date
+recipe_rf <- recipe(data = df_train, mode_wellbeing ~ .) %>%
+  step_date(measurement_date) %>%
+  step_rm(measurement_date)
+
+workflow_rf <- workflow() %>%
+  add_model(model_rf) %>%
+  add_recipe(recipe_rf)
+
+# train and tune model
+# when set-up model, specified two hyperparam:
+# - mtry: # of IV each node in decision tree sees and can learn about
+#     - when mtry = all possible features, model is same as bagging decision trees
+# - min_n: sets minimum n to split at any node
+# will use a space-filling design to tune, with 25 candidate models
+set.seed(42)
+res_rf <- workflow_rf %>%
+  tune_grid(df_val,
+    grid = 25,
+    control = control_grid(save_pred = TRUE),
+    metrics = metric_set(roc_auc)
+  )
+
+# top 5 random-forest models out of the 25 candidates are:
+show_best(x = res_rf, metric = "roc_auc")
+# see that the mean, or area under ROC, are not higher than our penalised multinomial regression,
+# plotting results of tuning process highlights:
+# mtry should be relatively small to optimise performance
+# whereas min_n can take a range of values to optimise performance
+autoplot(object = res_rf)
+
+# select best model according to ROC AUC metric
+best_rf <- select_best(x = res_rf, metric = "roc_auc")
+
+# get predictions for best random-forest model
+# and calculate area under ROC curve
+auc_rf <- res_rf %>%
+  collect_predictions(parameters = best_rf) %>%
+  roc_curve(mode_wellbeing, .pred_1:.pred_5) %>%
+  mutate(model = "Random Forest")
+
+# compare validation set ROC curves for penalised multinomial regression model
+# and random forest model
+bind_rows(auc_rf, auc_lr) %>%
+  ggplot(mapping = aes(x = 1 - specificity, y = sensitivity, col = model)) +
+  geom_path(lwd = 1.5, alpha = 0.8) +
+  geom_abline(lty = 3) +
+  coord_equal() +
+  scale_color_viridis_d(option = "plasma", end = 0.6)
+# random forest and multinomial regression are not too dissimilar,
+# though do have random forest covering the diagonal
 
 
+# Model Fit: Using best model ---------------------------------------------
+# after finding best model and hyperparam values
+# can use it to fit final model on all rows of data not orignally held out for testing
+# (train and validation set combined)
+# then evaluate model performance one last with with held-out test set
