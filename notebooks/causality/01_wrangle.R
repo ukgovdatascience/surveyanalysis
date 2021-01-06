@@ -1,5 +1,6 @@
 library(readr)
 library(dplyr)
+library(tidyr)
 library(stringr)
 
 source("src/utils/get_mode.R")
@@ -65,7 +66,12 @@ df_dv <- list_dfs[["df_responses"]] %>%
 nrow(filter(.data = df_dv, !is.na(x = mode_wellbeing)))
 nrow(filter(.data = df_dv, !is.na(x = mode_remotelearn)))
 
-# each person and date is unique
+df_dv <- df_dv %>%
+  select(-mode_remotelearn) %>%
+  # focus on mode_wellbeing
+  drop_na(mode_wellbeing)
+
+# check: each person and date is unique
 nrow(x = distinct(.data = df_dv, pupil_id, measurement_date)) == nrow(x = df_dv)
 
 
