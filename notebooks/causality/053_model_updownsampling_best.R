@@ -16,10 +16,17 @@ workflow_mr_last <- update_model(x = workflow_mr, spec = model_mr_last)
 
 # create fit
 set.seed(seed = 42)
+# is this right?
+fit_mr_initial <- model_mr_last %>%
+  fit(data = df_train, mode_wellbeing ~ .)
 fit_mr_last <- last_fit(object = workflow_mr_last, splits)
+
 
 # check metrics - not as good as without up- and down-sampling
 collect_metrics(x = fit_mr_last)
+
+# check coefficients
+tidy(x = fit_mr_initial)
 
 # variable importance plot
 fit_mr_last %>%
