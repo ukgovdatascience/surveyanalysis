@@ -47,24 +47,22 @@ res_mr <- tune_grid(
 )
 
 # show best models
-best_15_mr <- res_mr %>%
-  show_best(metric = "roc_auc", n = 15) %>%
-  arrange(penalty)
-
-# plot best model
-# visualise validation set-metrics against range of penality values
-penalty_best <- select_best(x = res_mr, metric = "roc_auc")$penalty
-penalty_own <- res_mr %>%
+best_15_mr <- show_best(x = res_mr, metric = "roc_auc", n = 15)
+best_mr <- select_best(x = res_mr, metric = "roc_auc")$penalty
+best_mr_own <- res_mr %>%
   show_best(metric = "roc_auc", n = 15) %>%
   # self-picked from plot
   filter(.config == "Preprocessor1_Model09")
+
+# plot best model
+# visualise validation set-metrics against range of penalty values
 res_mr %>%
   collect_metrics() %>%
   ggplot(mapping = aes(x = penalty, y = mean)) +
   geom_point() +
   geom_line() +
   geom_vline(
-    xintercept = c(penalty_best, penalty_own$penalty),
+    xintercept = c(best_mr$penalty, best_mr_own$penalty),
     colour = c("red", "purple")
   ) +
   ylab("Area under the ROC curve") +

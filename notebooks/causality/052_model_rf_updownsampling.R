@@ -39,7 +39,7 @@ res_rf <- workflow_rf %>%
     metrics = metric_set(roc_auc)
   )
 # show best random forest models out of 25 candidates
-show_best(x = res_rf, metric = "roc_auc")
+best_15_rf <- show_best(x = res_rf, metric = "roc_auc", n = 15)
 best_rf <- select_best(x = res_rf, metric = "roc_auc")
 # from plot below, want small `mtry` for optimal performance
 # whereas `min_n` can take a number of values

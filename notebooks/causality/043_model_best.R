@@ -10,12 +10,12 @@ source("notebooks/causality/042_model_rf.R")
 # build best model, multinomial regression, with optimal hyperparam found earlier,
 # and set importance = 'impurity' to provide variable-importance scores in this model,
 # thereby gain insight into IV that drive model performance
-model_ml_last <- multinom_reg(penalty = best_lr$penalty, mixture = 1) %>%
+model_mr_last <- multinom_reg(penalty = best_lr$penalty, mixture = 1) %>%
   set_engine(engine = "glmnet", importance = "impurity") %>%
   set_mode(mode = "classification")
 
 workflow_mr_last <- workflow_lr %>%
-  update_model(model_ml_last)
+  update_model(model_mr_last)
 
 set.seed(seed = 42)
 fit_ml_last <- workflow_mr_last %>%
