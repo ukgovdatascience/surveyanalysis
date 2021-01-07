@@ -5,7 +5,7 @@ library(ggplot2)
 # import and transform data
 source("notebooks/causality/03_traintest.R")
 
-# Model: Penalised Logistic Regression ----------------------------------
+# Model: Penalised multinomial regression ----------------------------------
 # set mixture to 1 means glmnet model removes irrelevant predictors
 # and choose simpler model
 model_lr <- multinom_reg(penalty = tune(), mixture = 1) %>%
@@ -95,5 +95,3 @@ autoplot(object = auc_lr)
 # it certainly is better than random as the curve does not lie on the diagonal,
 # but we could do better by having a larger area under the curve/be closer to top-left.
 # could be because we had class imbalances as indicated by larger areas for `5`.
-
-rm(index, key_stage_lvls, n_lvls, wellbeing_lvls)

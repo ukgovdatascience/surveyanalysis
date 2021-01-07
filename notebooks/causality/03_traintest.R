@@ -49,6 +49,7 @@ df_test %>%
 # are using stratified sampling here
 # alternative could be to use k-fold cross-validation
 # https://www.tidymodels.org/start/resampling/
+# https://stats.stackexchange.com/questions/18856/is-cross-validation-a-proper-substitute-for-validation-set
 
 # create 20% validation set from train set
 df_val <- validation_split(data = df_train, prop = 0.8, strata = mode_wellbeing)

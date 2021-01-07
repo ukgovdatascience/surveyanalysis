@@ -1,3 +1,5 @@
+library(parallel)
+
 # import and transform data
 source("notebooks/causality/041_model_mr.R")
 
@@ -5,7 +7,7 @@ source("notebooks/causality/041_model_mr.R")
 # tree-based models require very little preprocessing
 # and can effectively handle many types of predictors
 # (sparse, skewed, continuous, categorical)
-n_cores <- parallel::detectCores() - 1
+n_cores <- detectCores() - 1
 
 # if use other resampling method, let tune do parallel processing for you
 # so set num.threads = tune() - one things
@@ -20,7 +22,7 @@ model_rf <- rand_forest(
   set_mode(mode = "classification")
 
 # create recipe and workflow
-# unlike ppenalised logistic regression models,
+# unlike penalised logistic regression models,
 # random forest models don't require dummy or normalised IV,
 # but want to do feature-engineering on measurement_date
 recipe_rf <- recipe(data = df_train, mode_wellbeing ~ .) %>%
