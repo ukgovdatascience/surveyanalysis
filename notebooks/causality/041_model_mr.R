@@ -2,6 +2,7 @@ library(tidymodels)
 library(vip)
 library(ggplot2)
 
+# https://www.tidymodels.org/start/case-study/
 # import and transform data
 source("notebooks/causality/03_traintest.R")
 
