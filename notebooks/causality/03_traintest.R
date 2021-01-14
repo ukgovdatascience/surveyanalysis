@@ -16,6 +16,18 @@ source("src/utils/constants.R")
 summary(object = select(.data = df, -c(pupil_id, school_id, measurement_date)))
 
 
+# Factor analysis ---------------------------------------------------------
+# understand if for a collection of observed variables, there are a set of underlying variables/factors
+# that explain the interrelationships among those variables
+# (cannot conduct PCA as don't have numeric data, just factor)
+factor_variables <- df %>%
+  drop_na(mode_wellbeing, mode_wellbeing_lag1, d_key_stage, d_EAL, d_pupil_premium_eligible, d_send_marker) %>%
+  select(!starts_with("cl_187_")) %>%
+  select(-c(pupil_id:mode_wellbeing)) %>%
+  mutate(across(.cols = everything(), .fn = as.integer))
+# how many factors do we need?
+fa.parallel(x = factor_variables, fm = "minres", fa = "fa")
+
 
 # have missing values, which can be handled with:
 # - ignore observations: deletes missing values but this risks losing information.
