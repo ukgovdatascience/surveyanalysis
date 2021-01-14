@@ -1,4 +1,7 @@
 library(dplyr)
+library(psych)
+library(rcompanion)
+
 
 # import and transform data
 source("src/utils/constants.R")
@@ -26,8 +29,22 @@ factor_variables <- df %>%
   select(-c(pupil_id:mode_wellbeing)) %>%
   mutate(across(.cols = everything(), .fn = as.integer))
 # how many factors do we need?
-fa.parallel(x = factor_variables, fm = "minres", fa = "fa")
+fa.parallel(x = factor_variables, fm = "pa", fa = "fa")
 
+# look for correlations between variables
+# or in this case, Cramer V test since have categorical variables
+# up_to <- ncol(factor_variables)
+# for (i in 1:up_to){
+#   start <- i + 1
+#   for (j in start:up_to){
+#     cramerV(factor_variables[i], factor_variables[j])
+#   }
+# }
+#
+# cramerV(x=factor_variables$mode_wellbeing_lag1, y=factor_variables$d_female)
+# cramerV(x=factor_variables$mode_wellbeing_lag1, y=factor_variables$d_key_stage)
+# cramerV(x=factor_variables$mode_wellbeing_lag1, y=factor_variables$d_pupil_premium_eligible)
+# cramerV(x=factor_variables$mode_wellbeing_lag1, y=factor_variables$d_send_marker)
 
 # have missing values, which can be handled with:
 # - ignore observations: deletes missing values but this risks losing information.
