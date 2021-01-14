@@ -29,13 +29,6 @@ fit_ml_last %>%
   pull_workflow_fit() %>%
   vip()
 
-# compare with rf to find similar VIP
-finalize_model(x = model_rf, parameters = best_rf) %>%
-  set_engine(engine = "ranger", importance = "permutation") %>%
-  set_mode(mode = "classification") %>%
-  fit(mode_wellbeing ~ ., data = df_train) %>%
-  vip()
-
 # most important predictors/IV for wellbeing DV are:
 # i. mode_wellbeing_lag1_1 - first lagged wellbeing value when it is '1'
 # ii. mode_wellbeing_lag1_2 - first lagged wellbeing value when it is '2'
